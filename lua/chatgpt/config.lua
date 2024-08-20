@@ -8,6 +8,7 @@ WELCOME_MESSAGE = [[
 local M = {}
 function M.defaults()
   local defaults = {
+    enable_blackboxai = false,
     api_key_cmd = nil,
     yank_register = "+",
     extra_curl_params = nil,

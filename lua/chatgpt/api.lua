@@ -97,6 +97,73 @@ function Api.chat_completions(custom_params, cb, should_stop)
   end
 end
 
+Api.blackboxai_complection = function(message, on_complete)
+  local body = {
+    codeModelMode = true,
+    previewToken = nil,
+    agentMode = {},
+    trendingAgentMode = {},
+    isMicMode = false,
+    messages = {
+      { content = message, role = "user" },
+    },
+  }
+
+  local args = {
+    "-H",
+    "Content-Type: application/json",
+    "-X",
+    "POST",
+    "-d",
+    vim.json.encode(body),
+    "https://www.blackbox.ai/api/chat",
+  }
+
+  local stdout = vim.loop.new_pipe()
+  local stderr = vim.loop.new_pipe()
+  local stderr_chunks = {}
+
+  local handle, err
+  handle, err = vim.loop.spawn("curl", {
+    args = args,
+    stdio = { nil, stdout, stderr },
+  }, function(code)
+    stdout:close()
+    stderr:close()
+
+    if handle ~= nil then
+      handle:close()
+    end
+
+    vim.schedule(function()
+      if code ~= 0 then
+        on_complete(vim.trim(table.concat(stderr_chunks, "")))
+      end
+    end)
+  end)
+
+  local function on_stdout_read(_, chunk)
+    if chunk then
+      vim.schedule(function()
+        on_complete(chunk)
+      end)
+    end
+  end
+
+  local function on_stderr_read(_, chunk)
+    if chunk then
+      table.insert(stderr_chunks, chunk)
+    end
+  end
+
+  if not handle then
+    print("curl could not be started: " .. err)
+  else
+    stdout:read_start(on_stdout_read)
+    stderr:read_start(on_stderr_read)
+  end
+end
+
 function Api.edits(custom_params, cb)
   local openai_params = Utils.collapsed_openai_params(Config.options.openai_params)
   local params = vim.tbl_extend("keep", custom_params, openai_params)

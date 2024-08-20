@@ -789,10 +789,16 @@ function Chat:open()
       self:addQuestion(value)
       if self.role == ROLE_USER then
         self:showProgess()
-        local params = vim.tbl_extend("keep", { stream = true, messages = self:toMessages() }, Settings.params)
-        Api.chat_completions(params, function(answer, state)
-          self:addAnswerPartial(answer, state)
-        end, self.should_stop)
+        if Config.options.enable_blackboxai then
+          Api.blackboxai_complection(value, function(answer, state)
+            self:addAnswer(answer, state)
+          end)
+        else
+          local params = vim.tbl_extend("keep", { stream = true, messages = self:toMessages() }, Settings.params)
+          Api.chat_completions(params, function(answer, state)
+            self:addAnswerPartial(answer, state)
+          end, self.should_stop)
+        end
       end
     end,
   })

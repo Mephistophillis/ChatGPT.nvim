@@ -56,13 +56,17 @@ function ChatAction:render_template()
 end
 
 function ChatAction:get_params()
-  local messages = self.params.messages or {}
-  local message = {
-    role = "user",
-    content = self:render_template(),
-  }
-  table.insert(messages, message)
-  return vim.tbl_extend("force", Config.options.openai_params, self.params, { messages = messages })
+  if Config.options.enable_blackboxai then
+    return self:render_template()
+  else
+    local messages = self.params.messages or {}
+    local message = {
+      role = "user",
+      content = self:render_template(),
+    }
+    table.insert(messages, message)
+    return vim.tbl_extend("force", Config.options.openai_params, self.params, { messages = messages })
+  end
 end
 
 function ChatAction:run()
@@ -70,9 +74,16 @@ function ChatAction:run()
     self:set_loading(true)
 
     local params = self:get_params()
-    Api.chat_completions(params, function(answer, usage)
-      self:on_result(answer, usage)
-    end)
+
+    if Config.options.enable_blackboxai then
+      Api.blackboxai_complection(params, function(answer, usage)
+        self:on_result(answer, usage)
+      end)
+    else
+      Api.chat_completions(params, function(answer, usage)
+        self:on_result(answer, usage)
+      end)
+    end
   end)
 end
 
